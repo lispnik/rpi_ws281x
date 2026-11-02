@@ -125,6 +125,25 @@ Errors: a failed library call signals `ws2811-return-error`, a subclass of
 `return-code-keyword` to turn it into a keyword (e.g. `:error-mmap`).
 Bad arguments signal `type-error`.
 
+### Hardware notes
+
+**The output pin is not restored.** `ws2811_init` switches each
+configured GPIO to its PWM/PCM/SPI function without saving the old one,
+and `ws2811_fini` never switches it back. After `close-strip` the pin
+(e.g. GPIO 18) stays in that function, held low. That is a safe resting
+state for an LED data line, but anything else that wants the pin has to
+reset it, e.g. `pinctrl set 18 ip`, or reboot. With `:invert t` the line
+after your inverter rests high, not low.
+
+**PWM and analog audio clash.** On-board analog audio uses the same PWM
+hardware as GPIO 12/13/18/19. Turn it off when driving LEDs with PWM:
+set `dtparam=audio=off` in `/boot/firmware/config.txt` (or
+`/boot/config.txt` on older releases), blacklist the driver, and reboot:
+
+```sh
+echo "blacklist snd_bcm2835" | sudo tee /etc/modprobe.d/snd-blacklist.conf
+```
+
 ## Tests
 
 ```lisp
